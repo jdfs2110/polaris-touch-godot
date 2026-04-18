@@ -13,11 +13,13 @@ jobs:
     steps:
       - name: Setup Godot
         run: |
-          brew install --cask godot-mono
-
           cd ~
-          pwd
+          # Fix 1: Download the exact 4.5.1 Mono binary directly instead of using Brew
+          wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_macos.universal.zip
+          unzip Godot_v${GODOT_VERSION}-stable_mono_macos.universal.zip
+          mv Godot_mono.app /Applications/Godot_mono.app
 
+          # Templates setup remains the same
           mkdir -v -p "/Users/runner/Library/Application Support/Godot/export_templates"
           cd "/Users/runner/Library/Application Support/Godot/export_templates"
           wget -q https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz
@@ -34,7 +36,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Build Solution
         run: |
@@ -46,14 +48,16 @@ jobs:
       - name: Import Assets
         run: |
           cd $PROJECT_PATH
-          godot-mono --headless --verbose --editor --quit
+          # Fix 2: Point directly to the Godot binary inside the App bundle
+          /Applications/Godot_mono.app/Contents/MacOS/Godot --headless --verbose --editor --quit
 
       - name: iOS Export
         run: |
           mkdir -v -p build/ios
-          EXPORT_DIR="$(readlink -f build)"
+          # Fix 3: readlink -f doesn't work natively on macOS; pwd is safe and bulletproof
+          EXPORT_DIR="$(pwd)/build"
           cd $PROJECT_PATH
-          godot-mono --headless --verbose --export-release "iOS" $EXPORT_DIR/ios/polaris-touch.xcodeproj
+          /Applications/Godot_mono.app/Contents/MacOS/Godot --headless --verbose --export-release "iOS" $EXPORT_DIR/ios/polaris-touch.xcodeproj
 
       - name: iOS Build
         run: |
